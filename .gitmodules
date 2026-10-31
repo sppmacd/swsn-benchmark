@@ -3,4 +3,5 @@
 	url = https://github.com/MartinBoeckling/GeoRDF2Vec.git
 [submodule "submodules/Evaluation-Framework"]
 	path = submodules/Evaluation-Framework
-	url = https://github.com/mariaangelapellegrino/Evaluation-Framework.git
+	url = git@github.com:sppmacd/Evaluation-Framework.git
+	branch = master

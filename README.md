@@ -4,8 +4,7 @@ GeoRDF2Vec is an extension of RDF2Vec that accounts for geographical distances b
 
 ## Run
 
-- `git submodule update --init --recursive` to download dependencies
-- `scripts/apply_patches.sh` to patch dependencies to support new Python
+- `git submodule update --init --recursive` to download submodules
 - `uv sync` to install dependencies.
 
 ### EDA reports

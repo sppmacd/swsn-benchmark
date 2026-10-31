@@ -22,9 +22,8 @@ GeoRDF2Vec reports results only for classification, clustering and regression.
 ## How to run
 
 Original GEval had a hard-requirement for python 3.6 or 3.7. These
-versions are not supported anymore. That's why we are vendoring it in
-our repository, with patches which allow to run it with modern python.
-Run `scripts/apply_patches.sh` to get these.
+versions are not supported anymore. That's why we have a fork as a
+submodule, with patches which allow to run it with modern python.
 
 I have tested only examples, you can do e.g something like this:
 
