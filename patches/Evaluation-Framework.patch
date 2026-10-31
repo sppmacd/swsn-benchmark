@@ -1,0 +1,458 @@
+diff --git a/evaluation_framework/Clustering/clustering_model.py b/evaluation_framework/Clustering/clustering_model.py
+index e166fb2..b8cdb74 100644
+--- a/evaluation_framework/Clustering/clustering_model.py
++++ b/evaluation_framework/Clustering/clustering_model.py
+@@ -40,7 +40,7 @@ class ClusteringModel(AbstractModel):
+             self.model = (
+                 "AgglomerativeClustering(n_clusters="
+                 + str(n_clusters)
+-                + ", affinity='"
++                + ", metric='"
+                 + metric
+                 + "', linkage='average')"
+             )
+@@ -50,7 +50,7 @@ class ClusteringModel(AbstractModel):
+             self.model = (
+                 "AgglomerativeClustering(n_clusters="
+                 + str(n_clusters)
+-                + ", affinity='euclidean', linkage='ward')"
++                + ", metric='euclidean', linkage='ward')"
+             )
+             self.name = "Ward hierarchical clustering"
+             self.configuration = "metric=" + metric + ", n_clusters=" + str(n_clusters)
+@@ -96,7 +96,7 @@ class ClusteringModel(AbstractModel):
+ 
+         ignoredLabels = [n_clusters] * len(ignored)
+         labels = np.concatenate((labels, ignoredLabels), axis=0)
+-        labels = np.array(labels, dtype=np.float_)
++        labels = np.array(labels, dtype=float)
+ 
+         if self.debugging_mode:
+             print(self.name + " Number of clusters : " + str(n_clusters))
+diff --git a/evaluation_framework/SemanticAnalogies/semanticAnalogies_model.py b/evaluation_framework/SemanticAnalogies/semanticAnalogies_model.py
+index f6bd1a5..4e7f655 100644
+--- a/evaluation_framework/SemanticAnalogies/semanticAnalogies_model.py
++++ b/evaluation_framework/SemanticAnalogies/semanticAnalogies_model.py
+@@ -57,9 +57,9 @@ class SemanticAnalogiesModel(AbstractModel):
+             )
+             dist = np.dot(W, pred_vec.T)
+ 
+-            dist[ind1[j]] = -np.Inf
+-            dist[ind2[j]] = -np.Inf
+-            dist[ind3[j]] = -np.Inf
++            dist[ind1[j]] = -np.inf
++            dist[ind2[j]] = -np.inf
++            dist[ind3[j]] = -np.inf
+ 
+             predictions[j] = np.argsort(-dist, axis=0)[: self.top_k].T
+ 
+diff --git a/evaluation_framework/SemanticAnalogies/semanticAnalogies_taskManager.py b/evaluation_framework/SemanticAnalogies/semanticAnalogies_taskManager.py
+index 2a0609a..ee067b3 100644
+--- a/evaluation_framework/SemanticAnalogies/semanticAnalogies_taskManager.py
++++ b/evaluation_framework/SemanticAnalogies/semanticAnalogies_taskManager.py
+@@ -8,8 +8,8 @@ from evaluation_framework.SemanticAnalogies.semanticAnalogies_model import (
+ from evaluation_framework.abstract_taskManager import AbstractTaskManager
+ from numpy import mean
+ import numpy as np
+-from _collections import defaultdict
+-from pathlib2 import Path
++from collections import defaultdict
++from pathlib import Path
+ from typing import List, Callable
+ 
+ task_name = "SemanticAnalogies"
+diff --git a/evaluation_framework/evaluationManager.py b/evaluation_framework/evaluationManager.py
+index d8b340e..4ae0b98 100644
+--- a/evaluation_framework/evaluationManager.py
++++ b/evaluation_framework/evaluationManager.py
+@@ -523,7 +523,7 @@ class EvaluationManager(AbstractEvaluationManager):
+         if exists:
+             results_df = pd.read_csv(
+                 self.comparison_filename,
+-                "\s+",
++                sep=r"\s+",
+                 names=comparison_columns,
+                 encoding="utf-8",
+                 header=0,
+@@ -568,7 +568,7 @@ class EvaluationManager(AbstractEvaluationManager):
+ 
+         # start the comparison
+         effective_comparison_df = pd.DataFrame(columns=comparison_columns)
+-        rating_dataframe = pd.DataFrame(columns=ranking_columns)
++        rating_rows = list()
+ 
+         if compare_with == "_all":
+             compare_with = test_names
+@@ -644,7 +644,7 @@ class EvaluationManager(AbstractEvaluationManager):
+                                     else -1
+                                 )
+ 
+-                                rating_dataframe = rating_dataframe.append(
++                                rating_rows.append(
+                                     {
+                                         "task_name": task,
+                                         "gold_standard_file": gold_standard_file,
+@@ -656,10 +656,10 @@ class EvaluationManager(AbstractEvaluationManager):
+                                         "relative_total": len(
+                                             set(sorted_metric_results)
+                                         ),
+-                                    },
+-                                    ignore_index=True,
++                                    }
+                                 )
+ 
++            rating_dataframe = pd.DataFrame(rating_rows, columns=ranking_columns)
+             effective_comparison_df.to_csv(
+                 self.result_directory + "/comparison_values.csv",
+                 sep=" ",
+diff --git a/evaluation_framework/hdf5_dataManager.py b/evaluation_framework/hdf5_dataManager.py
+index 410cada..d571f07 100644
+--- a/evaluation_framework/hdf5_dataManager.py
++++ b/evaluation_framework/hdf5_dataManager.py
+@@ -199,7 +199,7 @@ class ClassificationDataManager(DataManager):
+     """
+ 
+     def read_file(self, filename, columns):
+-        return pd.read_csv(filename, "\t", usecols=columns, encoding="utf-8")
++        return pd.read_csv(filename, sep="\t", usecols=columns, encoding="utf-8")
+ 
+     """
+     It intersects the input file which contains the vectors and the file used as gold standard.
+@@ -235,7 +235,7 @@ class ClassificationDataManager(DataManager):
+         gold.rename(columns={column_key: "name"}, inplace=True)
+         gold.rename(columns={column_score: "label"}, inplace=True)
+ 
+-        merged = pd.DataFrame(columns=self.create_header(vector_size))
++        merged = list()
+         ignored = list()
+ 
+         for row in gold.itertuples():
+@@ -247,10 +247,11 @@ class ClassificationDataManager(DataManager):
+                 new_row["name"] = row.name
+                 new_row["label"] = row.label
+ 
+-                merged = merged.append(new_row, ignore_index=True)
++                merged.append(new_row)
+             else:
+                 ignored.append(row.name)
+ 
++        merged = pd.DataFrame(merged, columns=self.create_header(vector_size))
+         ignored_df = pd.DataFrame(ignored, columns=["name"])
+         return merged, ignored_df
+ 
+@@ -292,7 +293,7 @@ class ClusteringDataManager(DataManager):
+     def read_file(self, filename, columns):
+         return pd.read_csv(
+             filename,
+-            delim_whitespace=True,
++            sep=r"\s+",
+             usecols=columns,
+             index_col=False,
+             skipinitialspace=True,
+@@ -334,8 +335,8 @@ class ClusteringDataManager(DataManager):
+         gold.rename(columns={column_key: "name"}, inplace=True)
+         gold.rename(columns={column_score: "cluster"}, inplace=True)
+ 
+-        merged = pd.DataFrame(columns=self.create_header(vector_size))
+-        ignored = pd.DataFrame(columns=["name", "cluster"])
++        merged = list()
++        ignored = list()
+ 
+         for row in gold.itertuples():
+             encoded_name = self._to_hdf5_key(row.name)
+@@ -346,12 +347,12 @@ class ClusteringDataManager(DataManager):
+                 new_row["name"] = row.name
+                 new_row["cluster"] = row.cluster
+ 
+-                merged = merged.append(new_row, ignore_index=True)
++                merged.append(new_row)
+             else:
+-                ignored.append(
+-                    {"name": row.name, "cluster": row.cluster}, ignore_index=True
+-                )
++                ignored.append({"name": row.name, "cluster": row.cluster})
+ 
++        merged = pd.DataFrame(merged, columns=self.create_header(vector_size))
++        ignored = pd.DataFrame(ignored, columns=["name", "cluster"])
+         return merged, ignored
+ 
+     """
+@@ -392,7 +393,7 @@ class DocumentSimilarityDataManager(DataManager):
+     def read_file(self, filename, columns):
+         return pd.read_csv(
+             filename,
+-            ",",
++            sep=",",
+             usecols=columns,
+             index_col=False,
+             skipinitialspace=True,
+@@ -426,7 +427,7 @@ class DocumentSimilarityDataManager(DataManager):
+         vector_file = h5py.File(vector_filename, "r")
+         vector_group = vector_file["Vectors"]
+ 
+-        merged = pd.DataFrame(columns=self.create_header(vector_size))
++        merged = list()
+         ignored = list()
+ 
+         entities = self.get_entities(goldStandard_filename)
+@@ -441,10 +442,11 @@ class DocumentSimilarityDataManager(DataManager):
+                 new_row["name"] = row.name
+                 new_row["weight"] = row.weight
+ 
+-                merged = merged.append(new_row, ignore_index=True)
++                merged.append(new_row)
+             else:
+                 ignored.append(row.name)
+ 
++        merged = pd.DataFrame(merged, columns=self.create_header(vector_size))
+         ignored_df = pd.DataFrame(ignored, columns=["name"])
+ 
+         return merged, ignored_df
+@@ -561,7 +563,7 @@ class EntityRelatednessDataManager(DataManager):
+         vector_file = h5py.File(vector_filename, "r")
+         vector_group = vector_file["Vectors"]
+ 
+-        merged = pd.DataFrame(columns=self.create_header(vector_size))
++        merged = list()
+         ignored = list()
+ 
+         if goldStandard_data is None:
+@@ -576,10 +578,11 @@ class EntityRelatednessDataManager(DataManager):
+                 new_row = dict(zip(np.arange(vector_size), values))
+                 new_row["name"] = row.name
+ 
+-                merged = merged.append(new_row, ignore_index=True)
++                merged.append(new_row)
+             else:
+                 ignored.append(row.name)
+ 
++        merged = pd.DataFrame(merged, columns=self.create_header(vector_size))
+         ignored_df = pd.DataFrame(ignored, columns=["name"])
+ 
+         return merged, ignored_df
+@@ -621,7 +624,7 @@ class RegressionDataManager(DataManager):
+     """
+ 
+     def read_file(self, filename, columns):
+-        return pd.read_csv(filename, "\t", usecols=columns, encoding="utf-8")
++        return pd.read_csv(filename, sep="\t", usecols=columns, encoding="utf-8")
+ 
+     """
+     It intersects the input file which contains the vectors and the file used as gold standard.
+@@ -657,7 +660,7 @@ class RegressionDataManager(DataManager):
+         gold.rename(columns={column_key: "name"}, inplace=True)
+         gold.rename(columns={column_score: "label"}, inplace=True)
+ 
+-        merged = pd.DataFrame(columns=self.create_header(vector_size))
++        merged = list()
+         ignored = list()
+ 
+         for row in gold.itertuples():
+@@ -669,10 +672,11 @@ class RegressionDataManager(DataManager):
+                 new_row["name"] = row.name
+                 new_row["label"] = row.label
+ 
+-                merged = merged.append(new_row, ignore_index=True)
++                merged.append(new_row)
+             else:
+                 ignored.append(row.name)
+ 
++        merged = pd.DataFrame(merged, columns=self.create_header(vector_size))
+         ignored_df = pd.DataFrame(ignored, columns=["name"])
+         return merged, ignored_df
+ 
+diff --git a/evaluation_framework/txt_dataManager.py b/evaluation_framework/txt_dataManager.py
+index c797b1a..8d81f6f 100644
+--- a/evaluation_framework/txt_dataManager.py
++++ b/evaluation_framework/txt_dataManager.py
+@@ -55,7 +55,7 @@ class DataManager(AbstractDataManager):
+     def read_vector_file(self, vector_filename, vec_size):
+         local_vectors = pd.read_csv(
+             vector_filename,
+-            "\s+",
++            sep=r"\s+",
+             names=self.create_header(vec_size),
+             encoding="utf-8",
+             index_col=False,
+@@ -190,7 +190,7 @@ class ClassificationDataManager(DataManager):
+     """
+ 
+     def read_file(self, filename, columns):
+-        return pd.read_csv(filename, "\t", usecols=columns, encoding="utf-8")
++        return pd.read_csv(filename, sep="\t", usecols=columns, encoding="utf-8")
+ 
+     """
+     It intersects the input file which contains the vectors and the file used as gold standard.
+@@ -255,7 +255,7 @@ class ClusteringDataManager(DataManager):
+     def read_file(self, filename, columns):
+         return pd.read_csv(
+             filename,
+-            delim_whitespace=True,
++            sep=r"\s+",
+             usecols=columns,
+             index_col=False,
+             skipinitialspace=True,
+@@ -326,7 +326,7 @@ class DocumentSimilarityDataManager(DataManager):
+     def read_file(self, filename, columns):
+         return pd.read_csv(
+             filename,
+-            ",",
++            sep=",",
+             usecols=columns,
+             index_col=False,
+             skipinitialspace=True,
+@@ -500,7 +500,7 @@ class RegressionDataManager(DataManager):
+     """
+ 
+     def read_file(self, filename, columns):
+-        return pd.read_csv(filename, "\t", usecols=columns, encoding="utf-8")
++        return pd.read_csv(filename, sep="\t", usecols=columns, encoding="utf-8")
+ 
+     """
+     It intersects the input file which contains the vectors and the file used as gold standard.
+diff --git a/pyproject.toml b/pyproject.toml
+new file mode 100644
+index 0000000..6d43542
+--- /dev/null
++++ b/pyproject.toml
+@@ -0,0 +1,47 @@
++[build-system]
++requires = ["setuptools>=61"]
++build-backend = "setuptools.build_meta"
++
++[project]
++name = "evaluation_framework"
++version = "2.0"
++description = "Evaluation Framework for testing and comparing graph embedding techniques"
++readme = "pip_readme.md"
++license = { text = "Apache-2.0" }
++requires-python = ">=3.8"
++authors = [
++    { name = "Maria Angela Pellegrino", email = "mariaangelapellegrino94@gmail.com" },
++]
++keywords = [
++    "evaluation",
++    "graph-embedding",
++    "python",
++    "library",
++    "benchmark-framework",
++    "machine learning tasks",
++    "semantic tasks",
++]
++classifiers = [
++    "Development Status :: 3 - Alpha",
++    "Intended Audience :: Developers",
++    "Topic :: Software Development :: Build Tools",
++    "License :: OSI Approved :: Apache Software License",
++    "Programming Language :: Python :: 3",
++]
++dependencies = [
++    "numpy>=1.22",
++    "pandas>=1.0.5",
++    "scipy>=1.5.1",
++    "scikit-learn>=1.2",
++    "h5py>=3.0",
++]
++
++[project.urls]
++Homepage = "https://github.com/mariaangelapellegrino/Evaluation-Framework"
++Download = "https://github.com/mariaangelapellegrino/Evaluation-Framework/archive/v_2.0.tar.gz"
++
++[tool.setuptools.packages.find]
++include = ["evaluation_framework*"]
++
++[tool.setuptools.package-data]
++"*" = ["data/*.tsv", "data/*.csv", "data/*.txt", "data/*.json"]
+diff --git a/requirements.txt b/requirements.txt
+deleted file mode 100644
+index 9e7df40..0000000
+--- a/requirements.txt
++++ /dev/null
+@@ -1,6 +0,0 @@
+-scikit-learn==0.23.1
+-scipy==1.5.1
+-h5py==2.10.0
+-numpy==1.22.0
+-pandas==1.0.5
+-pathlib2
+\ No newline at end of file
+diff --git a/setup.cfg b/setup.cfg
+deleted file mode 100644
+index c1b5b83..0000000
+--- a/setup.cfg
++++ /dev/null
+@@ -1,2 +0,0 @@
+-[metadata]
+-description-file = pip_readme.md
+\ No newline at end of file
+diff --git a/setup.py b/setup.py
+deleted file mode 100644
+index 6bd958a..0000000
+--- a/setup.py
++++ /dev/null
+@@ -1,43 +0,0 @@
+-from setuptools import setup, find_packages
+-
+-with open("pip_readme.md", "r") as f:
+-    long_description = f.read()
+-
+-setup(
+-    name="evaluation_framework",
+-    packages=find_packages(),
+-    include_package_data=True,
+-    # packages_data={"": ["data/*.tsv", "data/*.csv", "data/*.txt"]},
+-    version="2.0",
+-    license="apache-2.0",
+-    description="Evaluation Framework for testing and comparing graph embedding techniques",
+-    long_description=long_description,
+-    author="Maria Angela Pellegrino",
+-    author_email="mariaangelapellegrino94@gmail.com",
+-    url="https://github.com/mariaangelapellegrino/Evaluation-Framework",
+-    download_url="https://github.com/mariaangelapellegrino/Evaluation-Framework/archive/v_2.0.tar.gz",
+-    keywords=[
+-        "evaluation",
+-        "graph-embedding",
+-        "python",
+-        "library",
+-        "benchmark-framework",
+-        "machine learning tasks",
+-        "semantic tasks",
+-    ],  # Keywords that define your package best
+-    install_requires=[
+-        "scikit-learn==0.23.1",
+-        "scipy==1.5.1",
+-        "h5py==2.10.0",
+-        "numpy==1.22.0",
+-        "pandas==1.0.5",
+-        "pathlib2",
+-    ],
+-    classifiers=[
+-        "Development Status :: 3 - Alpha",
+-        "Intended Audience :: Developers",
+-        "Topic :: Software Development :: Build Tools",
+-        "License :: OSI Approved :: Apache Software License",
+-        "Programming Language :: Python :: 3.7",
+-    ],
+-)
+diff --git a/test_vectorSize/test_vector_size.py b/test_vectorSize/test_vector_size.py
+index cc6cd72..fd2d1ce 100644
+--- a/test_vectorSize/test_vector_size.py
++++ b/test_vectorSize/test_vector_size.py
+@@ -14,7 +14,7 @@ def generate_cropped_files():
+         headers.append(i)
+ 
+     vectors_df = pd.read_csv(
+-        vector_filename, "\s+", names=headers, encoding="utf-8", index_col=False
++        vector_filename, sep=r"\s+", names=headers, encoding="utf-8", index_col=False
+     )
+ 
+     store_path = "test_vectors/"
+@@ -54,5 +54,6 @@ def evaluate_cropped_files():
+         )
+ 
+ 
+-generate_cropped_files()
+-evaluate_cropped_files()
++if __name__ == "__main__":
++    generate_cropped_files()
++    evaluate_cropped_files()

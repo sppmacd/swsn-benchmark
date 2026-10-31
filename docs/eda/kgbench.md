@@ -32,11 +32,13 @@ The GeoRDF2Vec[^geordf2vec] uses `dmg777k` for geographic embedding evaluation a
 - No class names seem to be available in general, only class IDs.
 - The datasets are in general very sparsely classified (most datasets have less than 10% of IRI nodes annotated).
 - Some datasets ("legacy" ones) don't store distinction between literal & IRI ("normal node") in the entity itself - we infer this from entity name (we check if it looks like an URI)
-- 
 
 ## References
 
-- [^dblp]: https://dblp.org/
-- [^geordf2vec]: https://arxiv.org/pdf/2504.17099v1
-- [^kgbench]: https://openreview.net/pdf?id=yeK_9wxRDbA
-- [^kgbenchloader]: https://github.com/pbloem/kgbench-loader
+[^dblp]: https://dblp.org/
+
+[^geordf2vec]: https://arxiv.org/pdf/2504.17099v1
+
+[^kgbench]: https://openreview.net/pdf?id=yeK_9wxRDbA
+
+[^kgbenchloader]: https://github.com/pbloem/kgbench-loader

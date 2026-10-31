@@ -4,6 +4,17 @@ GeoRDF2Vec is an extension of RDF2Vec that accounts for geographical distances b
 
 ## Run
 
-First, `uv sync` to install dependencies.
+- `git submodule update --init --recursive` to download dependencies
+- `scripts/apply_patches.sh` to patch dependencies to support new Python
+- `uv sync` to install dependencies.
 
-Then `uv run python -m lemb_bench.eda_kgbench -o out` (this takes several minutes)
+### EDA reports
+
+#### KDBench
+
+`uv run python -m lemb_bench.eda_kgbench -o out`
+
+#### GEval
+
+- Download DBPedia dump (only once, ~12GB): `scripts/dbpedia_download.sh path/to/dbpedia/dump`
+- Generate EDA report: `uv run python -m lemb_bench.eda_geval -d path/to/dbpedia/dump -o out`
