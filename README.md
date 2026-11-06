@@ -1,19 +1,32 @@
 # Evaluating methods for location-aware entity embeddings
 
-GeoRDF2Vec is an extension of RDF2Vec that accounts for geographical distances between objects in embeddings. This is a modification of RDF2Vec that applies weights depending on these distances. Our project goal is to evaluate different methods for computing such embeddings, and evaluate them on KGBench or GEval, like the GeoRDF2Vec paper.
+GeoRDF2Vec is an extension of RDF2Vec that accounts for geographical distances between objects in embeddings. This is a modification of RDF2Vec that applies weights depending on these distances. Our project goal is to evaluate different methods for computing such embeddings, and evaluate them on KGBench or GEval, like the [GeoRDF2Vec paper](https://arxiv.org/abs/2504.17099).
+
+Detailed notes on the benchmarks: [KGBench](docs/eda/kgbench.md), [GEval](docs/eda/geval.md).
 
 ## Run
 
 - `git submodule update --init --recursive` to download submodules
 - `uv sync` to install dependencies.
 
+## Data
+
+We do not store any datasets in this repository.
+
+| Dataset | How to get it | License |
+|---|---|---|
+| KGBench dmg777k | downloaded automatically by [kgbench-loader](https://github.com/pbloem/kgbench-loader) | CC-BY |
+| DBpedia 2016-04 (for GEval) | `scripts/dbpedia_download.sh` (archived copy, SHA-1 verified) | CC BY-SA 3.0, GNU FDL |
+
 ### EDA reports
 
-#### KDBench
+#### KGBench
+
+Summary of each KGBench dataset (size, classes, splits, sample triples):
 
 `uv run python -m lemb_bench.eda_kgbench -o out`
 
 #### GEval
 
-- Download DBPedia dump (only once, ~12GB): `scripts/dbpedia_download.sh path/to/dbpedia/dump`
-- Generate EDA report: `uv run python -m lemb_bench.eda_geval -d path/to/dbpedia/dump -o out`
+- Download DBpedia dump (only once, ~12GB): `scripts/dbpedia_download.sh path/to/dbpedia/dump`
+- Generate EDA report (graph statistics, geographic coverage, label distributions): `uv run python -m lemb_bench.eda_geval -d path/to/dbpedia/dump -o out`
