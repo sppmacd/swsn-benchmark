@@ -9,8 +9,14 @@
 
 ## 2. Environment
 
-The inspection and reproduction attempt were made on Windows with Python
-3.12.10. The repository's `pyproject.toml` intentionally remained unchanged.
+The benchmark repository uses Python 3.12.10. The reproduction was executed
+in WSL2/Ubuntu with the isolated legacy environment:
+
+- Python `2.7.18`
+- PyTorch `1.0.1.post2` CPU build
+- NumPy `1.16.4`
+
+The repository's `pyproject.toml` intentionally remained unchanged.
 
 The upstream `setup.py` declares `python_requires='==2.7'` and
 `requirements.txt` pins the following legacy stack:
@@ -53,23 +59,34 @@ download data, or modify the upstream checkout.
 
 ### Result of the checked attempt
 
-Reproduction status: **blocked before training**.
+Reproduction status: **validated at 3,000 iterations; full upstream run in
+progress**.
 
-The official repository was cloned and inspected at the commit above. The
-required `graphqa/dbgeo/` data directory was not present in the clone, and the
-upstream documentation provides it through a separate Google Drive archive.
-The current benchmark environment also uses Python 3.12, while the upstream
-package requires Python 2.7 and PyTorch 1.0.1. Consequently, no training run,
-classification result, or final benchmark score was produced.
+The DBGeo archive was extracted into `graphqa/dbgeo/` and the wrapper was
+executed with the official `dbgeo_geoqa_full.sh` configuration. At iteration
+3,000 the log reported `ema_loss=0.353618` and produced these validation
+metrics:
 
-The wrapper can be retried after preparing the legacy environment and placing
-the DBGeo files in the expected directory. A failed retry is still useful:
-the complete output is retained in `out/algorithms/se-kge/run.log`.
+| Query family | AUC | APR |
+| --- | ---: | ---: |
+| General macro average | 0.781644 | 78.354961 |
+| Geographic macro average | 0.808247 | 81.023577 |
+
+The process continued beyond 3,000 iterations after the supplied checkpoint
+was copied. These are validation metrics, not final test-set scores.
+
+The checkpoint used for the embedding export is:
+
+```text
+/home/pawel/se-kge-checkpoints/backup/dbgeo-0-projbbox-theory-concat-64-16-5400000.000000-50.000000-sigmoid-geometric-T-F-fromid2geo-0-0.0--1-512-T-T-0.50-64-2048-0.005000-0.010000-bilinear_blockdiag-min_simple-F-concat_norm_postm-leakyrelu-sigmoid-1-F-T-7.pth
+```
 
 ## 4. Entity embeddings
 
 The inspected implementation does not expose a standalone
-`entity -> vector` export command.
+`entity -> vector` export command, so this repository now provides a small
+legacy-environment exporter at
+`scripts/algorithms/export_se_kge_embeddings.py`.
 
 - During `load_graph`, it creates a separate `torch.nn.Embedding` matrix for
   each entity type, initialized with a normal distribution.
@@ -78,13 +95,15 @@ The inspected implementation does not expose a standalone
 - `node_maps` maps global entity identifiers to per-type local indices.
 - Training also consumes pickled train/validation/test triples and query files,
   plus geographic metadata such as `id2geo.pkl` for location-aware modes.
-- The checked repository contains no documented embedding dump or stable
-  entity-to-vector interchange format. Extracting vectors would require adding
-  a checkpoint/export hook to the training code and preserving the type maps.
-
-Therefore, embedding generation and export are **not demonstrated** by this
-PR. The architecture is sufficient to identify where an adapter would need to
-read the learned matrices, but not sufficient to claim a compatible export.
+- The supplied checkpoint is an `OrderedDict` with 1,056 parameters and
+  separate `enc.feat_enc.feat-<type>.weight` matrices.
+- The matrices have dimension 64 and contain one unused leading row; the
+  remaining rows map through `graph_data.pkl`'s per-type `node_maps`.
+- The exporter joins those rows to the original DBGeo identifiers from
+  `entity2id.txt`.
+- The 3,000-iteration checkpoint exports 25,980 entity vectors across seven
+  types: Agent, Event, MeanOfTransportation, Place, Thing, TopicalConcept, and
+  Work.
 
 ## 5. Integration with this benchmark
 
@@ -122,32 +141,37 @@ preserved as strings in an adapter, but the upstream model internally uses
 integer global IDs and per-type local IDs, so the mapping must be saved with
 the output embeddings.
 
-The generated vectors could be evaluated by GEval only after adding an
-explicit exporter that emits the exact entity IDs used by the GEval label
-files. That step has not been implemented or validated here.
+The generated vectors now include the original DBGeo entity IDs, so they are
+structurally suitable for a GEval adapter. Direct GEval evaluation has not
+yet been run; the remaining work is to verify identifier overlap and align the
+exported vectors with the GEval label files.
 
 ## 6. Local validation
 
 - The wrapper passed shell syntax validation and was executed against the
   cloned upstream checkout.
-- The wrapper produced `out/algorithms/se-kge/run.log` and failed with exit
-  status `2` because `graphqa/dbgeo/` was absent.
+- The wrapper produced `out/algorithms/se-kge/run.log`; it created the missing
+  upstream output directory and reached training.
 - The exporter CLI help and a CSV smoke test passed.
 - A real export on the small KGBench `aifb` dataset passed and wrote 29,043
   triples. This validates the loader/mapping path without adding data to the
   repository.
-- A full `dmg777k` export was started, but the dataset download did not finish
-  within the available run window; no partial dataset or CSV was retained.
+- A full `dmg777k` export passed and wrote 777,124 triples to
+  `data/dmg777k/triples.csv`.
+- The checkpoint structure and per-type embedding matrices were inspected, and
+  the exporter wrote 25,980 rows to
+  `/home/pawel/se-kge-checkpoints/embeddings-3000.tsv`.
 
 ## 7. Conclusion
 
-- Reproduction status: **blocked before training**.
+- Reproduction status: **validated at 3,000 iterations; full run in progress**.
 - Integration difficulty: **high**.
-- Main blockers: Python 2.7/PyTorch 1.0.1 legacy dependencies, external DBGeo
-  archive, pickled graph/query input format, and undocumented embedding export.
+- Main blockers: the legacy runtime is isolated but fragile, the full upstream
+  training run is still in progress, and KGBench/GEval require a typed
+  graph/query adapter rather than the simple triple CSV.
 - Completed in this repository: repeatable runner, KGBench triple exporter,
-  compatibility analysis, and documentation of the observed blockers.
-- Next implementation steps: prepare an isolated legacy runtime, acquire and
-  verify DBGeo, run the original experiment, then add a typed graph/query
-  adapter and an embedding export hook before attempting KGBench or GEval
-  evaluation.
+  SE-KGE checkpoint embedding exporter, compatibility analysis, and measured
+  3,000-iteration reproduction results.
+- Next implementation steps: record final test metrics after the full run,
+  build the typed graph/query adapter for KGBench, and evaluate the exported
+  vectors against GEval after confirming identifier coverage.
