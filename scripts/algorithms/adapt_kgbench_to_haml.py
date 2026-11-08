@@ -19,6 +19,7 @@ official KGBench split, whose labels are for node classification.
 from __future__ import annotations
 
 import argparse
+import csv
 import hashlib
 import json
 import pickle
@@ -38,7 +39,7 @@ def label(mapping, index):
 def entry_label(item):
     if isinstance(item, (tuple, list)):
         item = item[0]
-    return str(item)
+    return safe_label(item)
 
 
 def write_lines(path, triples):
@@ -55,23 +56,37 @@ def compact_label(value, max_length=4096):
     return "<large-literal sha256={} length={}>".format(digest, len(value))
 
 
+def safe_label(value):
+    """Return one parser-safe, deterministic label for a HAML text file."""
+    value = str(value).replace("\t", " ").replace("\r", " ").replace("\n", " ")
+    if not value.strip():
+        value = "<empty>"
+    return compact_label(value)
+
+
 def split_edges(triples, num_entities, num_relations, seed, validation_fraction, test_fraction):
     shuffled = list(triples)
     random.Random(seed).shuffle(shuffled)
 
     # Reserve edges that cover every entity and relation in train. This keeps
     # HAML's transductive evaluation from indexing unseen validation/test IDs.
+    # Find the first shuffled edge covering each entity/relation in one pass.
+    # Scanning all edges separately for every entity is quadratic on dmg777k.
     train_indices = set()
-    for entity_id in range(num_entities):
-        for index, (head, _relation, tail) in enumerate(shuffled):
-            if head == entity_id or tail == entity_id:
-                train_indices.add(index)
-                break
-    for relation_id in range(num_relations):
-        for index, (_head, relation, _tail) in enumerate(shuffled):
-            if relation == relation_id:
-                train_indices.add(index)
-                break
+    unseen_entities = set(range(num_entities))
+    unseen_relations = set(range(num_relations))
+    for index, (head, relation, tail) in enumerate(shuffled):
+        if head in unseen_entities:
+            unseen_entities.remove(head)
+            train_indices.add(index)
+        if tail in unseen_entities:
+            unseen_entities.remove(tail)
+            train_indices.add(index)
+        if relation in unseen_relations:
+            unseen_relations.remove(relation)
+            train_indices.add(index)
+        if not unseen_entities and not unseen_relations:
+            break
 
     train = [triple for index, triple in enumerate(shuffled) if index in train_indices]
     remaining = [triple for index, triple in enumerate(shuffled) if index not in train_indices]
@@ -155,20 +170,18 @@ def main():
         pickle.dump(save_data, handle, protocol=4)
 
     with (output_dir / "entity_mapping.tsv").open("w", encoding="utf-8", newline="") as handle:
-        handle.write("haml_entity_id\tkgbenc_entity_id\tannotation\tentity\n")
+        writer = csv.writer(handle, delimiter="\t", lineterminator="\n")
+        writer.writerow(["haml_entity_id", "kgbenc_entity_id", "annotation", "entity"])
         for haml_id, original_id in enumerate(used_entities):
             item = data.i2e[original_id]
             annotation = item[1] if isinstance(item, (tuple, list)) and len(item) > 1 else "unknown"
-            handle.write("{}\t{}\t{}\t{}\n".format(
-                haml_id, original_id, annotation, compact_label(item[0])
-            ))
+            writer.writerow([haml_id, original_id, safe_label(annotation), safe_label(item[0])])
 
     with (output_dir / "relation_mapping.tsv").open("w", encoding="utf-8", newline="") as handle:
-        handle.write("haml_relation_id\tkgbenc_relation_id\trelation\n")
+        writer = csv.writer(handle, delimiter="\t", lineterminator="\n")
+        writer.writerow(["haml_relation_id", "kgbenc_relation_id", "relation"])
         for haml_id, original_id in enumerate(raw_relations):
-            handle.write("{}\t{}\t{}\n".format(
-                haml_id, original_id, compact_label(data.i2r[original_id])
-            ))
+            writer.writerow([haml_id, original_id, safe_label(data.i2r[original_id])])
 
     manifest = {
         "dataset": args.dataset,

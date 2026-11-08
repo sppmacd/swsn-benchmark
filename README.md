@@ -42,7 +42,7 @@ with our benchmark datasets.
 Implementation reviews and reproduction results are documented in
 [`docs/algorithms`](docs/algorithms/README.md).
 
-#### SE-KGE
+#### SE-KGE implementation
 
 Official repository: [gengchenmai/se-kge](https://github.com/gengchenmai/se-kge)
 
@@ -90,3 +90,46 @@ To create a separate geographic smoke-test directory, add `--with-geo` and
 use `out/algorithms/se-kge/dmg777k-adapter-geo` as the output path. This
 extracts WGS84 WKT centroids into `id2geo.pkl`; it does not transform the
 remaining RD geometries or create benchmark-valid negatives.
+
+#### HAML implementation
+
+Official repository: [LawrenceXieZ/HAML](https://github.com/LawrenceXieZ/HAML)
+
+HAML requires a separate Python 3.7 environment and an external checkout. The
+public checkout is incomplete: several runtime modules are absent from the
+source tree, so use a prepared checkout as described in the
+[HAML reproduction notes](docs/algorithms/haml.md). The runner defaults to CPU
+and records its log in `out/algorithms/haml/`:
+
+```bash
+bash scripts/algorithms/run_haml.sh /path/to/HAML aifb_smoke4 \
+  --name aifb_smoke4 --gpu cpu \
+  --state_dir ./state_smoke4 --log_dir ./log_smoke4 --tb_log_dir ./tb_smoke4 \
+  --num_train_subgraph 2 --num_valid_subgraph 1 \
+  --num_sample_for_estimate_size 1 --rw_0 20 --rw_1 5 --rw_2 3 \
+  --num_sample_cand 2 --metatrain_num_neg 2 \
+  --metatrain_num_epoch 1 --metatrain_bs 1 \
+  --metatrain_check_per_step 1 --indtest_eval_bs 4 \
+  --emb_dim 16 --num_layers 1 --num_bases 2 --kge TransE
+```
+
+To create a leakage-safe HAML-format smoke dataset from KGBench, use:
+
+```bash
+python scripts/algorithms/adapt_kgbench_to_haml.py \
+  --dataset aifb \
+  --output-dir /path/to/HAML/data/aifb_smoke4
+```
+
+The adapter's split is synthetic and must not be reported as an official
+KGBench result. HAML embedding export is available after training:
+
+```bash
+python scripts/algorithms/export_haml_embeddings.py \
+  --haml-root /path/to/HAML \
+  --data-pkl /path/to/HAML/data/aifb_smoke4.pkl \
+  --checkpoint /path/to/HAML/state_smoke4/aifb_smoke4/aifb_smoke4.best \
+  --entity-map /path/to/HAML/data/aifb_smoke4/entity_mapping.tsv \
+  --output /path/to/HAML/embeddings.tsv \
+  --emb-dim 16 --num-layers 1 --num-bases 2 --gpu cpu
+```
