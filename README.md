@@ -70,3 +70,18 @@ uv run python -m lemb_bench.export_kgbench \
 
 This CSV is an intermediate interchange format; it does not by itself create
 the pickled graph, query splits, or geographic metadata required by SE-KGE.
+
+For the first SE-KGE compatibility test on `dmg777k`, generate the typed graph
+and one-edge query files with:
+
+```bash
+uv run python scripts/algorithms/adapt_kgbench_to_se_kge.py \
+  --dataset dmg777k \
+  --output-dir out/algorithms/se-kge/dmg777k-adapter \
+  --type-mode rdf \
+  --seed 777
+```
+
+This is a loader smoke-test adapter: its deterministic 90/5/5 edge split is
+not the official KGBench node-classification split, and it does not invent
+geographic metadata or final-evaluation negative samples.

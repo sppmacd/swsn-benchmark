@@ -132,6 +132,44 @@ KGBench's generic RDF-like triples do not by themselves guarantee the
 geographic annotations required by SE-KGE. Geographic coverage must be
 measured and a mapping strategy documented before training.
 
+### Compatibility adapter: `dmg777k`
+
+The repository now includes a repeatable first-stage adapter:
+`scripts/algorithms/adapt_kgbench_to_se_kge.py`. It creates an SE-KGE data
+directory with:
+
+- `graph_data.pkl` containing forward/inverse relations, adjacency lists and
+  per-mode `node_maps`;
+- `train_triples.pkl`, `valid_triples.pkl`, `test_triples.pkl` and the
+  corresponding one-edge query files;
+- `entity2type.tsv`, `relation2id.tsv` and `manifest.json` documenting the
+  mapping and limitations.
+
+Run it from the repository's Python 3 environment with:
+
+```bash
+uv run python scripts/algorithms/adapt_kgbench_to_se_kge.py \
+  --dataset dmg777k \
+  --output-dir out/algorithms/se-kge/dmg777k-adapter \
+  --type-mode rdf \
+  --seed 777
+```
+
+The `rdf` mode assigns one deterministic SE-KGE type per entity from its first
+sorted `rdf:type` class, using the KGBench annotation as fallback. The checked
+`dmg777k` output contains 341,270 entities, 777,124 unique triples, 19 modes
+and 152 forward/inverse relation templates. It uses a deterministic 90/5/5
+edge split (699,412/38,856/38,856); this is an adapter smoke-test split, not
+the official KGBench node-classification split. Validation and test query
+files contain empty negative-sample placeholders and must not be used for
+final metrics.
+
+The generated directory contains no `id2geo*` or extent files. A Python 2.7
+SE-KGE smoke test successfully loaded the graph and one-edge query files, and
+initialized `Trainer` with `spa_enc_type=no`. Geographic training, multi-edge
+query generation, comparable KGBench evaluation and coordinate alignment are
+still separate tasks.
+
 ### GEval / DBpedia
 
 The same compatibility gap applies to DBpedia/GEval. DBpedia TTL data would
@@ -158,6 +196,9 @@ exported vectors with the GEval label files.
   repository.
 - A full `dmg777k` export passed and wrote 777,124 triples to
   `data/dmg777k/triples.csv`.
+- The `dmg777k` adapter generated the SE-KGE graph and one-edge split described
+  above; Python 2.7 loaded `graph_data.pkl` and initialized the model without
+  geographic metadata.
 - The checkpoint structure and per-type embedding matrices were inspected, and
   the exporter wrote 25,980 rows to
   `/home/pawel/se-kge-checkpoints/embeddings-3000.tsv`.
@@ -172,6 +213,6 @@ exported vectors with the GEval label files.
 - Completed in this repository: repeatable runner, KGBench triple exporter,
   SE-KGE checkpoint embedding exporter, compatibility analysis, and measured
   3,000-iteration reproduction results.
-- Next implementation steps: record final test metrics after the full run,
-  build the typed graph/query adapter for KGBench, and evaluate the exported
-  vectors against GEval after confirming identifier coverage.
+- Next implementation steps: add a KGBench coordinate mapping, generate
+  multi-edge/geographic queries, run a deliberately separate SE-KGE training
+  experiment, and evaluate vectors only after confirming identifier coverage.
