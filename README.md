@@ -4,19 +4,19 @@ GeoRDF2Vec is an extension of RDF2Vec that accounts for geographical distances b
 
 Detailed notes on the benchmarks: [KGBench](docs/eda/kgbench.md), [GEval](docs/eda/geval.md).
 
-## Run
-
-- `git submodule update --init --recursive` to download submodules
-- `uv sync` to install dependencies.
-
 ## Data
 
 We do not store any datasets in this repository.
 
 | Dataset | How to get it | License |
 |---|---|---|
-| KGBench dmg777k | downloaded automatically by [kgbench-loader](https://github.com/pbloem/kgbench-loader) | CC-BY |
+| KGBench dmg777k | downloaded automatically by [kgbench-loader](https://github.com/pbloem/kgbench-loader) | CC-BY (see also [docs](docs/eda/kgbench.md)) |
 | DBpedia 2016-04 (for GEval) | `scripts/dbpedia_download.sh` (archived copy, SHA-1 verified) | CC BY-SA 3.0, GNU FDL |
+
+## Run
+
+- `git submodule update --init --recursive` to download submodules
+- `uv sync` to install dependencies.
 
 ### EDA reports
 

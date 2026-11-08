@@ -12,16 +12,16 @@ The loader implements the following datasets:[^kgbenchloader]
 
 | name       | description                                                                                                        | license                  |
 | ---------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------ |
-| `aifb`     | "the AIFB research institute in terms of its staff, research group, and publications"                              | ?                        |
+| `aifb`     | "the AIFB research institute in terms of its staff, research group, and publications"                              | CC-BY                    |
 | `am`       | Amsterdam Museum dataset                                                                                           | CC-BY                    |
 | `amplus`   | Extended version of the AM data                                                                                    | CC-BY                    |
-| `bgs`      | (TODO)                                                                                                             | ?                        |
+| `bgs`      | British Geological Survey data                                                                                     | research use allowed     |
 | `dblp`     | Subset of the DBLP database[^dblp] (computer science bibliography), enriched with author information from Wikidata | CC0                      |
 | `dmgfull`  | Monuments in the Netherlands                                                                                       | CC-BY                    |
 | `dmg777k`  | Subset of dmgfull                                                                                                  | CC-BY                    |
 | `mdgender` | (TODO)                                                                                                             | CC0+no rights for images |
 | `mdgenre`  | Movie data extracted from Wikidata                                                                                 | CC0+no rights for images |
-| `mutag`    | (TODO)                                                                                                             | ?                        |
+| `mutag`    | "a collection of nitroaromatic compounds and the goal is to predict their mutagenicity on Salmonella typhimurium'" | unknown                  |
 
 Each datasets has a separate set of classes.
 
