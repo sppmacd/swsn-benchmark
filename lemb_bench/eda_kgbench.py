@@ -52,6 +52,11 @@ def classify(label, annotation: str, legacy: bool) -> str:
     return "none"
 
 
+def counter_to_percent(c):
+    total = sum(v for k, v in c.items())
+    return {int(k): f"{v} ({round(v * 100 / total, 2)}%)" for k, v in c.items()}
+
+
 def render(dataset: str, data, splits, count: int) -> str:
     train, val = (rows for _, rows in splits)
     rng = np.random.default_rng(0)
@@ -60,6 +65,8 @@ def render(dataset: str, data, splits, count: int) -> str:
     kinds = Counter(classify(label, ann, legacy) for label, ann in data.i2e)
     labeled = np.unique(np.concatenate([train[:, 0], val[:, 0]]))
     labeled_kinds = Counter(classify(*data.i2e[i], legacy) for i in labeled)
+    class_distribution_train = counter_to_percent(Counter(data.training[:, 1]))
+    class_distribution_test = counter_to_percent(Counter(data.withheld[:, 1]))
     out = [
         f"{dataset}: {data.num_entities} nodes, {data.num_relations} relations, "
         f"{len(data.triples)} triples, {data.num_classes} classes",
@@ -69,6 +76,8 @@ def render(dataset: str, data, splits, count: int) -> str:
         f"{100 * labeled_kinds['blank'] / total:5.2f}% blank   "
         f"{100 * labeled_kinds['none'] / total:5.2f}% none   {100 * len(labeled) / total:5.2f}% total",
         f"split sizes: train={len(train)}, val={len(val)}",
+        f"{class_distribution_train=}",
+        f"{class_distribution_test=}",
         "",
         "labeled entities (split, entity, class):",
     ]
@@ -108,6 +117,9 @@ def main() -> None:
             del data
         except Exception as e:
             print(f"{dataset}: failed: {e}", file=sys.stderr)
+            import traceback
+
+            traceback.print_exc()
 
 
 if __name__ == "__main__":
