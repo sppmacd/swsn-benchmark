@@ -7,9 +7,13 @@ the original implementation has been run successfully on its original data.
 | Method | Test owner | Official implementation | Original run | Embedding export | KGBench/GEval integration | Integration difficulty |
 | --- | --- | --- | --- | --- | --- | --- |
 | SE-KGE | swsn-benchmark team | [gengchenmai/se-kge](https://github.com/gengchenmai/se-kge) | Validated through 3,000 iterations on DBGeo; full upstream run is still in progress | Exported from the checkpoint as 25,980 entity vectors in 7 types, dimension 64 | `dmg777k` typed graph/one-edge adapter generated and loaded by Python 2.7; geographic training/evaluation remains | High |
+| HAML | swsn-benchmark team | [LawrenceXieZ/HAML](https://github.com/LawrenceXieZ/HAML) | CPU smoke test on a synthetic AIFB link split succeeded; clean upstream checkout is incomplete | Exported 8,285 graph-conditioned vectors of dimension 16 from the smoke checkpoint | AIFB and `dmg777k` conversion adapters validated; official evaluation remains | High |
 
 See [se-kge.md](se-kge.md) for the commit, dependency list, reproduction command,
 observed blockers, and the proposed adapter boundary.
+
+See [haml.md](haml.md) for the source audit, CPU smoke test, checkpoint
+export, KGBench adapter, and upstream compatibility blockers.
 
 The shared KGBench export command is:
 

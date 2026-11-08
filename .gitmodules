@@ -5,3 +5,7 @@
 	path = submodules/Evaluation-Framework
 	url = git@github.com:sppmacd/Evaluation-Framework.git
 	branch = master
+[submodule "submodules/HAML"]
+	path = submodules/HAML
+	url = https://github.com/Flat-Earther/HAML.git
+	branch = main
