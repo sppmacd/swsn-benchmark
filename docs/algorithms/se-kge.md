@@ -170,6 +170,38 @@ initialized `Trainer` with `spa_enc_type=no`. Geographic training, multi-edge
 query generation, comparable KGBench evaluation and coordinate alignment are
 still separate tasks.
 
+An optional geographic variant can be generated into a separate directory:
+
+```bash
+uv run python scripts/algorithms/adapt_kgbench_to_se_kge.py \
+  --dataset dmg777k \
+  --output-dir out/algorithms/se-kge/dmg777k-adapter-geo \
+  --type-mode rdf \
+  --seed 777 \
+  --with-geo
+```
+
+This extracts centroids from `geosparql:asWKT` and copies them to geometry
+nodes and their `hasGeometry` parents. The checked output contains 20,866 WGS84
+geometries and 31,169 entity IDs in `id2geo.pkl`. The 371 `asWKT-RD` records
+are counted but not silently transformed between coordinate systems.
+
+The bounded query-format smoke test is run inside the legacy WSL environment:
+
+```bash
+python scripts/algorithms/sample_se_kge_geo_queries.py \
+  --se-kge-root /home/pawel/se-kge \
+  --data-dir /mnt/c/Users/pawel/Desktop/sem7/swsn-benchmark/out/algorithms/se-kge/dmg777k-adapter-geo \
+  --num-test-queries 10 \
+  --num-validation-queries 10
+```
+
+It successfully wrote 10 two-chain and 10 three-chain files for both
+validation and test. These queries have empty negative lists and are only a
+serialization/loader smoke test; they are not valid benchmark evaluation
+queries. The original upstream rejection sampler was not used because it can
+run indefinitely on this converted graph.
+
 ### GEval / DBpedia
 
 The same compatibility gap applies to DBpedia/GEval. DBpedia TTL data would
@@ -197,8 +229,10 @@ exported vectors with the GEval label files.
 - A full `dmg777k` export passed and wrote 777,124 triples to
   `data/dmg777k/triples.csv`.
 - The `dmg777k` adapter generated the SE-KGE graph and one-edge split described
-  above; Python 2.7 loaded `graph_data.pkl` and initialized the model without
-  geographic metadata.
+  above; Python 2.7 loaded `graph_data.pkl` and initialized the model both with
+  `spa_enc_type=no` and with the optional WGS84 `spa_enc_type=theory` variant.
+- The bounded query smoke test wrote 10 two-chain and 10 three-chain queries
+  for validation and test in the geographic adapter directory.
 - The checkpoint structure and per-type embedding matrices were inspected, and
   the exporter wrote 25,980 rows to
   `/home/pawel/se-kge-checkpoints/embeddings-3000.tsv`.
@@ -213,6 +247,7 @@ exported vectors with the GEval label files.
 - Completed in this repository: repeatable runner, KGBench triple exporter,
   SE-KGE checkpoint embedding exporter, compatibility analysis, and measured
   3,000-iteration reproduction results.
-- Next implementation steps: add a KGBench coordinate mapping, generate
-  multi-edge/geographic queries, run a deliberately separate SE-KGE training
+- Next implementation steps: replace centroid/empty-negative smoke data with a
+  benchmark-defined coordinate and negative-sampling policy, decide how to
+  transform the RD geometries, run a deliberately separate SE-KGE training
   experiment, and evaluate vectors only after confirming identifier coverage.

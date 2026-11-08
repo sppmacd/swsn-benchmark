@@ -85,3 +85,8 @@ uv run python scripts/algorithms/adapt_kgbench_to_se_kge.py \
 This is a loader smoke-test adapter: its deterministic 90/5/5 edge split is
 not the official KGBench node-classification split, and it does not invent
 geographic metadata or final-evaluation negative samples.
+
+To create a separate geographic smoke-test directory, add `--with-geo` and
+use `out/algorithms/se-kge/dmg777k-adapter-geo` as the output path. This
+extracts WGS84 WKT centroids into `id2geo.pkl`; it does not transform the
+remaining RD geometries or create benchmark-valid negatives.

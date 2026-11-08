@@ -124,6 +124,76 @@ def dump_pickle(value, path):
         pickle.dump(value, handle, protocol=2)
 
 
+def build_geo_metadata(data, triples, output_dir):
+    """Extract WGS84 centroid metadata from GeoSPARQL geometry nodes.
+
+    KGBench contains ``geosparql:asWKT`` polygons and links many of their
+    geometry nodes back to resources with ``geosparql:hasGeometry``. The
+    centroid is a deliberate approximation for the point-based ``id2geo``
+    format used by SE-KGE. RD geometries are counted in the manifest but are
+    not silently transformed to WGS84.
+    """
+    try:
+        from shapely import wkt
+    except ImportError as error:
+        raise RuntimeError("--with-geo requires Shapely in the Python 3 environment") from error
+
+    relation_ids = {str(relation): relation_id for relation_id, relation in enumerate(data.i2r)}
+    wgs84_relation = relation_ids.get("http://www.opengis.net/ont/geosparql#asWKT")
+    rd_relation = relation_ids.get("http://data.pdok.nl/def/pdok#asWKT-RD")
+    has_geometry_relation = relation_ids.get("http://www.opengis.net/ont/geosparql#hasGeometry")
+
+    geometry_to_parents = defaultdict(set)
+    if has_geometry_relation is not None:
+        for subject, predicate, object_ in triples:
+            if predicate == has_geometry_relation:
+                geometry_to_parents[object_].add(subject)
+
+    wgs84 = {}
+    rd_count = 0
+    invalid_count = 0
+    for geometry_id, relation, literal_id in triples:
+        if relation not in (wgs84_relation, rd_relation):
+            continue
+        literal = mapping_label(data.i2e, literal_id)
+        try:
+            shape = wkt.loads(literal)
+        except Exception:
+            invalid_count += 1
+            continue
+        if relation == rd_relation:
+            rd_count += 1
+            continue
+        if geometry_id not in wgs84:
+            centroid = shape.centroid
+            wgs84[geometry_id] = {
+                "point": [float(centroid.x), float(centroid.y)],
+                "extent": [float(shape.bounds[0]), float(shape.bounds[2]),
+                           float(shape.bounds[1]), float(shape.bounds[3])],
+            }
+
+    id2geo = {}
+    id2extent = {}
+    for geometry_id, metadata in wgs84.items():
+        ids = set([geometry_id]) | geometry_to_parents.get(geometry_id, set())
+        for entity_id in ids:
+            id2geo[entity_id] = metadata["point"]
+            id2extent[entity_id] = tuple(metadata["extent"])
+
+    dump_pickle(id2geo, output_dir / "id2geo.pkl")
+    dump_pickle(id2extent, output_dir / "id2extent.pkl")
+    return {
+        "enabled": True,
+        "crs": "WGS84 inferred from geosparql:asWKT",
+        "assignment": "geometry centroid copied to geometry node and hasGeometry parents",
+        "wgs84_geometry_count": len(wgs84),
+        "geo_entity_count": len(id2geo),
+        "rd_geometry_count": rd_count,
+        "invalid_wkt_count": invalid_count,
+        "rd_note": "asWKT-RD values were counted only; no RD-to-WGS84 transformation was applied",
+    }
+
+
 def write_mapping_files(output_dir, data, entity_types):
     with (output_dir / "entity2type.tsv").open("w", encoding="utf-8", newline="") as handle:
         # Do not copy the full KGBench labels here. dmg777k contains large
@@ -152,6 +222,11 @@ def main():
         choices=("rdf", "generic"),
         default="rdf",
         help="use rdf:type plus annotation fallback, or one generic Entity mode",
+    )
+    parser.add_argument(
+        "--with-geo",
+        action="store_true",
+        help="extract WGS84 WKT centroids into id2geo.pkl and id2extent.pkl",
     )
     args = parser.parse_args()
 
@@ -238,6 +313,14 @@ def main():
     )
     write_mapping_files(output_dir, data, entity_types)
 
+    if args.with_geo:
+        geographic_metadata = build_geo_metadata(data, triples, output_dir)
+    else:
+        geographic_metadata = {
+            "enabled": False,
+            "note": "No id2geo/id2extent files were generated; use --with-geo for WGS84 WKT centroids.",
+        }
+
     manifest = {
         "dataset": args.dataset,
         "entities": len(data.i2e),
@@ -256,8 +339,8 @@ def main():
         "type_count": len(node_maps),
         "types": {key: len(value) for key, value in sorted(node_maps.items())},
         "relation_templates": len(all_templates),
-        "geographic_metadata": False,
-        "geographic_note": "KGBench coordinates were not inferred; id2geo/id2extent files are intentionally absent.",
+        "geographic_metadata": geographic_metadata["enabled"],
+        "geographic_note": geographic_metadata,
         "negative_samples": "empty placeholders in val_edges.pkl/test_edges.pkl; do not use for final metrics",
         "next_step": "provide a coordinate mapping and generate SE-KGE multi-edge/geographic query files before training",
         "type_metadata": type_metadata,
@@ -270,7 +353,9 @@ def main():
         len(data.i2e), len(triples), len(train_triples), len(valid_triples), len(test_triples)
     ))
     print("  SE-KGE modes: {}, relation templates: {}".format(len(node_maps), len(all_templates)))
-    print("  geographic metadata: absent (intentional compatibility-only adapter)")
+    print("  geographic metadata: {}".format(
+        "WGS84 WKT centroids" if args.with_geo else "absent (use --with-geo to extract WKT centroids)"
+    ))
 
 
 if __name__ == "__main__":

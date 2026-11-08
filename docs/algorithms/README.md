@@ -39,6 +39,22 @@ It creates a loader-compatible typed graph and one-edge query files. Its
 output is for integration testing rather than benchmark metrics. Geographic
 metadata and multi-edge queries are intentionally not generated yet.
 
+To also extract WGS84 centroids from the GeoSPARQL WKT literals, use a separate
+output directory and add `--with-geo`:
+
+```text
+uv run python scripts/algorithms/adapt_kgbench_to_se_kge.py \
+  --dataset dmg777k \
+  --output-dir out/algorithms/se-kge/dmg777k-adapter-geo \
+  --type-mode rdf \
+  --seed 777 \
+  --with-geo
+```
+
+The Python 2.7 helper `scripts/algorithms/sample_se_kge_geo_queries.py` can then
+write bounded 2/3-chain query-format smoke tests. Their empty negative lists
+make them unsuitable for final metrics.
+
 For a trained SE-KGE checkpoint, the legacy environment can export vectors
 with:
 
